@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Stockroom — Sneaker & Boot Inventory</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #181a16;
+    --bg-2: #21241d;
+    --card: #ede7d8;
+    --card-shadow: #16150f;
+    --ink: #201d18;
+    --muted: #7a7566;
+    --line: #cdc4a9;
+    --red: #c23b22;
+    --teal: #2f6f6b;
+    --gold: #b8862e;
+    --wish: #5a5f8a;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:
+      radial-gradient(circle at 20% 10%, #22261d 0%, transparent 45%),
+      var(--bg);
+    color:var(--card);
+    font-family:'IBM Plex Sans', sans-serif;
+    min-height:100vh;
+  }
+  .wrap{max-width:1180px;margin:0 auto;padding:28px 20px 80px;}
+
+  header{
+    display:flex;justify-content:space-between;align-items:flex-end;
+    border-bottom:3px solid var(--card);
+    padding-bottom:14px;margin-bottom:20px;flex-wrap:wrap;gap:10px;
+  }
+  .brandmark{
+    font-family:'Oswald',sans-serif;
+    font-weight:700;
+    font-size:clamp(28px,5vw,42px);
+    letter-spacing:0.5px;
+    text-transform:uppercase;
+    color:var(--card);
+    line-height:1;
+  }
+  .brandmark span{color:var(--red);}
+  .tagline{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-top:4px;}
+  .manifest{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12px;color:var(--muted);text-align:right;
+    letter-spacing:0.5px;
+  }
+
+  .stats{display:flex;gap:0;margin-bottom:24px;border:1px solid #3a3d33;flex-wrap:wrap;}
+  .stat{flex:1;min-width:130px;padding:12px 16px;border-right:1px solid #3a3d33;}
+  .stat:last-child{border-right:none;}
+  .stat .num{font-family:'Oswald',sans-serif;font-size:26px;font-weight:600;color:var(--card);}
+  .stat .lbl{font-family:'IBM Plex Mono',monospace;font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);}
+
+  .toolbar{
+    display:flex;gap:10px;flex-wrap:wrap;align-items:center;
+    margin-bottom:22px;padding:10px;background:var(--bg-2);border:1px solid #3a3d33;
+  }
+  .toolbar input[type=text]{
+    flex:2;min-width:180px;padding:9px 12px;background:#0f110d;border:1px solid #3a3d33;color:var(--card);
+    font-family:'IBM Plex Mono',monospace;font-size:13px;
+  }
+  .toolbar select{
+    padding:9px 10px;background:#0f110d;border:1px solid #3a3d33;color:var(--card);
+    font-family:'IBM Plex Mono',monospace;font-size:12px;
+  }
+  .btn{
+    font-family:'Oswald',sans-serif;text-transform:uppercase;letter-spacing:0.5px;font-weight:600;
+    padding:10px 18px;border:none;cursor:pointer;font-size:13px;
+  }
+  .btn-add{background:var(--red);color:#fff;margin-left:auto;}
+  .btn-add:hover{background:#a02f1a;}
+
+  .empty{
+    border:2px dashed #3a3d33;padding:60px 20px;text-align:center;color:var(--muted);
+    font-family:'IBM Plex Mono',monospace;font-size:13px;
+  }
+
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:22px;}
+
+  .card{
+    background:var(--card);color:var(--ink);position:relative;
+    box-shadow:6px 6px 0 var(--card-shadow);
+    padding:0;overflow:hidden;
+  }
+  .card-top{
+    background-image: repeating-linear-gradient(90deg, transparent 0 10px, #c9bf9d 10px 11px);
+    height:10px;border-bottom:2px dashed #b9ae8c;
+  }
+  .card-body{padding:16px 16px 14px;}
+  .card-brand{font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);}
+  .card-model{font-family:'Oswald',sans-serif;font-weight:600;font-size:20px;line-height:1.15;margin:2px 0 6px;}
+  .card-colorway{font-size:13px;color:#4b463a;font-style:italic;margin-bottom:10px;}
+  .card-img{width:100%;height:140px;object-fit:cover;border:1px solid var(--line);margin-bottom:10px;background:#ddd4b8;}
+  .card-noimg{width:100%;height:70px;display:flex;align-items:center;justify-content:center;border:1px dashed var(--line);margin-bottom:10px;font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted);}
+
+  .tagrow{display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap;}
+  .size-stamp{
+    width:44px;height:44px;border-radius:50%;border:2px solid var(--ink);
+    display:flex;align-items:center;justify-content:center;flex-direction:column;flex-shrink:0;
+  }
+  .size-stamp .n{font-family:'Oswald',sans-serif;font-weight:700;font-size:15px;line-height:1;}
+  .size-stamp .u{font-family:'IBM Plex Mono',monospace;font-size:7px;letter-spacing:0.5px;}
+
+  .pill{
+    font-family:'IBM Plex Mono',monospace;font-size:10px;text-transform:uppercase;letter-spacing:0.5px;
+    padding:4px 8px;border:1px solid var(--ink);
+  }
+  .pill-condition{background:#e2dbc7;}
+
+  .card-figures{
+    display:flex;justify-content:space-between;font-family:'IBM Plex Mono',monospace;font-size:12px;
+    border-top:1px solid var(--line);padding-top:8px;margin-top:4px;
+  }
+  .card-figures div{display:flex;flex-direction:column;}
+  .fig-lbl{font-size:9px;color:var(--muted);text-transform:uppercase;}
+  .fig-val{font-weight:600;}
+  .fig-val.gold{color:var(--gold);}
+
+  .card-notes{font-size:12px;color:#5c5643;margin-top:8px;line-height:1.4;}
+
+  .status-stamp{
+    position:absolute;top:38%;left:50%;transform:translate(-50%,-50%) rotate(-14deg);
+    font-family:'Oswald',sans-serif;font-weight:700;font-size:26px;letter-spacing:3px;
+    border:4px solid var(--red);color:var(--red);padding:4px 14px;
+    opacity:0.82;pointer-events:none;text-transform:uppercase;
+    background:rgba(237,231,216,0.55);
+  }
+  .status-stamp.wishlist{border-color:var(--wish);color:var(--wish);}
+
+  .card-actions{display:flex;gap:8px;margin-top:12px;}
+  .card-actions button{
+    flex:1;font-family:'IBM Plex Mono',monospace;font-size:11px;text-transform:uppercase;
+    padding:7px 0;border:1px solid var(--ink);background:transparent;color:var(--ink);cursor:pointer;
+  }
+  .card-actions button:hover{background:var(--ink);color:var(--card);}
+  .card-actions button.danger:hover{background:var(--red);border-color:var(--red);color:#fff;}
+
+  /* modal */
+  .overlay{
+    position:fixed;inset:0;background:rgba(10,10,8,0.75);display:flex;align-items:center;justify-content:center;
+    padding:20px;z-index:50;
+  }
+  .modal{
+    background:var(--card);color:var(--ink);width:100%;max-width:520px;max-height:90vh;overflow-y:auto;
+    box-shadow:8px 8px 0 var(--card-shadow);
+  }
+  .modal-head{
+    background:var(--ink);color:var(--card);padding:14px 20px;
+    font-family:'Oswald',sans-serif;text-transform:uppercase;letter-spacing:1px;font-size:16px;font-weight:600;
+    display:flex;justify-content:space-between;align-items:center;
+  }
+  .modal-head button{background:none;border:none;color:var(--card);font-size:20px;cursor:pointer;line-height:1;}
+  .modal-body{padding:20px;}
+  .field{margin-bottom:14px;}
+  .field label{
+    display:block;font-family:'IBM Plex Mono',monospace;font-size:10px;text-transform:uppercase;
+    letter-spacing:0.5px;color:var(--muted);margin-bottom:5px;
+  }
+  .field input, .field select, .field textarea{
+    width:100%;padding:9px 10px;border:1px solid var(--muted);background:#fff;
+    font-family:'IBM Plex Sans',sans-serif;font-size:14px;color:var(--ink);
+  }
+  .field textarea{resize:vertical;min-height:60px;}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  .modal-foot{display:flex;gap:10px;padding:14px 20px;border-top:1px solid var(--line);}
+  .modal-foot .btn-save{background:var(--red);color:#fff;flex:1;}
+  .modal-foot .btn-cancel{background:transparent;border:1px solid var(--ink);color:var(--ink);flex:1;}
+
+  .toast{
+    position:fixed;bottom:24px;left:50%;transform:translateX(-50%);
+    background:var(--card);color:var(--ink);padding:10px 20px;
+    font-family:'IBM Plex Mono',monospace;font-size:12px;text-transform:uppercase;letter-spacing:0.5px;
+    box-shadow:4px 4px 0 var(--card-shadow);z-index:100;
+  }
+  @media (prefers-reduced-motion:no-preference){
+    .toast{animation:fadein 0.2s ease;}
+  }
+  @keyframes fadein{from{opacity:0;transform:translate(-50%,10px);}to{opacity:1;transform:translate(-50%,0);}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <div class="brandmark">Stock<span>room</span></div>
+      <div class="tagline">Sneaker &amp; Boot Inventory Manifest</div>
+    </div>
+    <div class="manifest" id="dateLine"></div>
+  </header>
+
+  <div class="stats" id="stats"></div>
+
+  <div class="toolbar">
+    <input type="text" id="search" placeholder="Search brand, model, colorway, notes…">
+    <select id="filterStatus">
+      <option value="">All statuses</option>
+      <option>In Collection</option>
+      <option>Sold</option>
+      <option>Wishlist</option>
+    </select>
+    <select id="filterCondition">
+      <option value="">All conditions</option>
+      <option>Deadstock (DS)</option>
+      <option>VNDS</option>
+      <option>Worn / Good</option>
+      <option>Worn / Fair</option>
+      <option>Beat</option>
+    </select>
+    <select id="sortBy">
+      <option value="recent">Sort: Recently added</option>
+      <option value="value-desc">Sort: Value (high→low)</option>
+      <option value="value-asc">Sort: Value (low→high)</option>
+      <option value="brand">Sort: Brand A→Z</option>
+    </select>
+    <button class="btn btn-add" id="openAdd">+ Add Pair</button>
+  </div>
+
+  <div id="gridHolder"></div>
+</div>
+
+<script>
+const STORAGE_KEY = 'sneaker-inventory';
+let inventory = [];
+let editingId = null;
+
+const dateLine = document.getElementById('dateLine');
+dateLine.textContent = 'MANIFEST DATE: ' + new Date().toLocaleDateString(undefined,{year:'numeric',month:'short',day:'2-digit'}).toUpperCase();
+
+function uid(){ return 'p_' + Date.now() + '_' + Math.random().toString(36).slice(2,8); }
+
+async function loadInventory(){
+  try{
+    const res = await window.storage.get(STORAGE_KEY, false);
+    inventory = res && res.value ? JSON.parse(res.value) : [];
+  }catch(e){
+    inventory = [];
+  }
+  render();
+}
+
+async function saveInventory(){
+  try{
+    const res = await window.storage.set(STORAGE_KEY, JSON.stringify(inventory), false);
+    if(!res){ showToast('Save failed — try again'); }
+  }catch(e){
+    showToast('Storage error saving inventory');
+  }
+}
+
+function showToast(msg){
+  const t = document.createElement('div');
+  t.className='toast';
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(()=>t.remove(), 1800);
+}
+
+function fmtMoney(n){
+  if(n===null || n===undefined || n==='' || isNaN(n)) return '—';
+  return '$' + Number(n).toLocaleString(undefined,{maximumFractionDigits:0});
+}
+
+function renderStats(){
+  const total = inventory.filter(p=>p.status!=='Wishlist').length;
+  const inCollection = inventory.filter(p=>p.status==='In Collection').length;
+  const sold = inventory.filter(p=>p.status==='Sold').length;
+  const wishlist = inventory.filter(p=>p.status==='Wishlist').length;
+  const totalValue = inventory.filter(p=>p.status==='In Collection').reduce((s,p)=>s + (Number(p.estValue)||0),0);
+  const totalInvested = inventory.filter(p=>p.status!=='Wishlist').reduce((s,p)=>s + (Number(p.purchasePrice)||0),0);
+
+  const stats = [
+    ['PAIRS OWNED', total],
+    ['IN COLLECTION', inCollection],
+    ['SOLD', sold],
+    ['WISHLIST', wishlist],
+    ['EST. VALUE', fmtMoney(totalValue)],
+    ['TOTAL INVESTED', fmtMoney(totalInvested)],
+  ];
+  document.getElementById('stats').innerHTML = stats.map(([lbl,num])=>
+    `<div class="stat"><div class="num">${num}</div><div class="lbl">${lbl}</div></div>`
+  ).join('');
+}
+
+function getFiltered(){
+  const q = document.getElementById('search').value.trim().toLowerCase();
+  const st = document.getElementById('filterStatus').value;
+  const cond = document.getElementById('filterCondition').value;
+  const sortBy = document.getElementById('sortBy').value;
+
+  let list = inventory.filter(p=>{
+    if(st && p.status!==st) return false;
+    if(cond && p.condition!==cond) return false;
+    if(q){
+      const hay = [p.brand,p.model,p.colorway,p.notes].join(' ').toLowerCase();
+      if(!hay.includes(q)) return false;
+    }
+    return true;
+  });
+
+  if(sortBy==='value-desc') list.sort((a,b)=>(Number(b.estValue)||0)-(Number(a.estValue)||0));
+  else if(sortBy==='value-asc') list.sort((a,b)=>(Number(a.estValue)||0)-(Number(b.estValue)||0));
+  else if(sortBy==='brand') list.sort((a,b)=>(a.brand||'').localeCompare(b.brand||''));
+  else list.sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
+
+  return list;
+}
+
+function render(){
+  renderStats();
+  const list = getFiltered();
+  const holder = document.getElementById('gridHolder');
+  if(inventory.length===0){
+    holder.innerHTML = `<div class="empty">No pairs logged yet. Hit "+ Add Pair" to start the manifest.</div>`;
+    return;
+  }
+  if(list.length===0){
+    holder.innerHTML = `<div class="empty">Nothing matches that search/filter combo.</div>`;
+    return;
+  }
+  holder.innerHTML = `<div class="grid">${list.map(cardHtml).join('')}</div>`;
+}
+
+function cardHtml(p){
+  const stampClass = p.status==='Sold' ? 'status-stamp' : (p.status==='Wishlist' ? 'status-stamp wishlist' : '');
+  const stamp = (p.status==='Sold' || p.status==='Wishlist') ? `<div class="${stampClass}">${p.status}</div>` : '';
+  const img = p.imageUrl ? `<img class="card-img" src="${escapeAttr(p.imageUrl)}" onerror="this.outerHTML='<div class=\\'card-noimg\\'>Image unavailable</div>'">` : `<div class="card-noimg">No image on file</div>`;
+  return `
+    <div class="card">
+      <div class="card-top"></div>
+      ${stamp}
+      <div class="card-body">
+        <div class="card-brand">${esc(p.brand)||'—'}</div>
+        <div class="card-model">${esc(p.model)||'Untitled Pair'}</div>
+        ${p.colorway ? `<div class="card-colorway">"${esc(p.colorway)}"</div>` : ''}
+        ${img}
+        <div class="tagrow">
+          <div class="size-stamp"><div class="n">${esc(p.size)||'—'}</div><div class="u">SIZE</div></div>
+          ${p.condition ? `<span class="pill pill-condition">${esc(p.condition)}</span>` : ''}
+          ${p.quantity && p.quantity>1 ? `<span class="pill">×${p.quantity}</span>` : ''}
+        </div>
+        <div class="card-figures">
+          <div><span class="fig-lbl">Paid</span><span class="fig-val">${fmtMoney(p.purchasePrice)}</span></div>
+          <div><span class="fig-lbl">Acquired</span><span class="fig-val">${p.purchaseDate||'—'}</span></div>
+          <div><span class="fig-lbl">Est. Value</span><span class="fig-val gold">${fmtMoney(p.estValue)}</span></div>
+        </div>
+        ${p.notes ? `<div class="card-notes">${esc(p.notes)}</div>` : ''}
+        <div class="card-actions">
+          <button onclick="openEdit('${p.id}')">Edit</button>
+          <button class="danger" onclick="removePair('${p.id}')">Remove</button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function esc(s){ if(s===undefined||s===null) return ''; return String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function escAttr(s){ return esc(s); }
+
+async function removePair(id){
+  if(!confirm('Remove this pair from the manifest? This can\'t be undone.')) return;
+  inventory = inventory.filter(p=>p.id!==id);
+  await saveInventory();
+  render();
+  showToast('Pair removed');
+}
+
+function openEdit(id){
+  const p = inventory.find(x=>x.id===id);
+  if(!p) return;
+  editingId = id;
+  fillForm(p);
+  document.getElementById('modalTitle').textContent = 'Edit Pair';
+  document.getElementById('overlay').style.display='flex';
+}
+
+function openAddModal(){
+  editingId = null;
+  fillForm({});
+  document.getElementById('modalTitle').textContent = 'Add Pair';
+  document.getElementById('overlay').style.display='flex';
+}
+
+function fillForm(p){
+  document.getElementById('f-brand').value = p.brand||'';
+  document.getElementById('f-model').value = p.model||'';
+  document.getElementById('f-colorway').value = p.colorway||'';
+  document.getElementById('f-size').value = p.size||'';
+  document.getElementById('f-quantity').value = p.quantity||1;
+  document.getElementById('f-condition').value = p.condition||'Deadstock (DS)';
+  document.getElementById('f-status').value = p.status||'In Collection';
+  document.getElementById('f-purchasePrice').value = p.purchasePrice||'';
+  document.getElementById('f-purchaseDate').value = p.purchaseDate||'';
+  document.getElementById('f-estValue').value = p.estValue||'';
+  document.getElementById('f-imageUrl').value = p.imageUrl||'';
+  document.getElementById('f-notes').value = p.notes||'';
+}
+
+function closeModal(){ document.getElementById('overlay').style.display='none'; }
+
+async function saveForm(e){
+  e.preventDefault();
+  const data = {
+    brand: document.getElementById('f-brand').value.trim(),
+    model: document.getElementById('f-model').value.trim(),
+    colorway: document.getElementById('f-colorway').value.trim(),
+    size: document.getElementById('f-size').value.trim(),
+    quantity: Number(document.getElementById('f-quantity').value) || 1,
+    condition: document.getElementById('f-condition').value,
+    status: document.getElementById('f-status').value,
+    purchasePrice: document.getElementById('f-purchasePrice').value,
+    purchaseDate: document.getElementById('f-purchaseDate').value,
+    estValue: document.getElementById('f-estValue').value,
+    imageUrl: document.getElementById('f-imageUrl').value.trim(),
+    notes: document.getElementById('f-notes').value.trim(),
+  };
+
+  if(!data.brand && !data.model){
+    showToast('Add at least a brand or model');
+    return;
+  }
+
+  if(editingId){
+    const idx = inventory.findIndex(p=>p.id===editingId);
+    if(idx>-1) inventory[idx] = {...inventory[idx], ...data};
+  } else {
+    data.id = uid();
+    data.createdAt = Date.now();
+    inventory.push(data);
+  }
+  await saveInventory();
+  closeModal();
+  render();
+  showToast(editingId ? 'Pair updated' : 'Pair added to manifest');
+}
+
+document.getElementById('openAdd').addEventListener('click', openAddModal);
+document.getElementById('search').addEventListener('input', render);
+document.getElementById('filterStatus').addEventListener('change', render);
+document.getElementById('filterCondition').addEventListener('change', render);
+document.getElementById('sortBy').addEventListener('change', render);
+
+loadInventory();
+</script>
+
+<div class="overlay" id="overlay" style="display:none;">
+  <div class="modal">
+    <div class="modal-head">
+      <span id="modalTitle">Add Pair</span>
+      <button onclick="closeModal()">&times;</button>
+    </div>
+    <form id="pairForm" onsubmit="saveForm(event)">
+      <div class="modal-body">
+        <div class="row2">
+          <div class="field"><label>Brand</label><input id="f-brand" type="text" placeholder="Nike, New Balance, Red Wing…"></div>
+          <div class="field"><label>Model / Name</label><input id="f-model" type="text" placeholder="Air Max 1, 990v6, Iron Ranger…"></div>
+        </div>
+        <div class="field"><label>Colorway</label><input id="f-colorway" type="text" placeholder="Anthracite / Wheat"></div>
+        <div class="row2">
+          <div class="field"><label>Size</label><input id="f-size" type="text" placeholder="10.5"></div>
+          <div class="field"><label>Quantity (identical pairs)</label><input id="f-quantity" type="number" min="1" value="1"></div>
+        </div>
+        <div class="row2">
+          <div class="field">
+            <label>Condition</label>
+            <select id="f-condition">
+              <option>Deadstock (DS)</option>
+              <option>VNDS</option>
+              <option>Worn / Good</option>
+              <option>Worn / Fair</option>
+              <option>Beat</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Status</label>
+            <select id="f-status">
+              <option>In Collection</option>
+              <option>Sold</option>
+              <option>Wishlist</option>
+            </select>
+          </div>
+        </div>
+        <div class="row2">
+          <div class="field"><label>Purchase Price ($)</label><input id="f-purchasePrice" type="number" step="0.01" placeholder="180"></div>
+          <div class="field"><label>Purchase Date</label><input id="f-purchaseDate" type="date"></div>
+        </div>
+        <div class="field"><label>Est. Current Value ($)</label><input id="f-estValue" type="number" step="0.01" placeholder="220"></div>
+        <div class="field"><label>Image URL (optional)</label><input id="f-imageUrl" type="text" placeholder="Link to a hosted photo"></div>
+        <div class="field"><label>Notes</label><textarea id="f-notes" placeholder="Box condition, provenance, where you got it…"></textarea></div>
+      </div>
+      <div class="modal-foot">
+        <button type="button" class="btn btn-cancel" onclick="closeModal()">Cancel</button>
+        <button type="submit" class="btn btn-save">Save Pair</button>
+      </div>
+    </form>
+  </div>
+</div>
+</body>
+</html>
