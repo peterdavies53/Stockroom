@@ -1,0 +1,723 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Stockroom — Sneaker & Boot Inventory</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jsqr/1.4.0/jsQR.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<style>
+  :root{
+    --bg:#181a16; --bg-2:#21241d; --card:#ede7d8; --card-shadow:#16150f;
+    --ink:#201d18; --muted:#7a7566; --line:#cdc4a9;
+    --red:#c23b22; --teal:#2f6f6b; --gold:#b8862e; --wish:#5a5f8a;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:radial-gradient(circle at 20% 10%, #22261d 0%, transparent 45%), var(--bg);
+    color:var(--card);font-family:'IBM Plex Sans', sans-serif;min-height:100vh;}
+  .wrap{max-width:1180px;margin:0 auto;padding:28px 20px 80px;}
+  header{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:3px solid var(--card);
+    padding-bottom:14px;margin-bottom:20px;flex-wrap:wrap;gap:10px;}
+  .brandmark{font-family:'Oswald',sans-serif;font-weight:700;font-size:clamp(28px,5vw,42px);
+    letter-spacing:0.5px;text-transform:uppercase;color:var(--card);line-height:1;}
+  .brandmark span{color:var(--red);}
+  .tagline{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-top:4px;}
+  .manifest{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--muted);text-align:right;letter-spacing:0.5px;}
+
+  .stats{display:flex;gap:0;margin-bottom:24px;border:1px solid #3a3d33;flex-wrap:wrap;}
+  .stat{flex:1;min-width:120px;padding:12px 16px;border-right:1px solid #3a3d33;}
+  .stat:last-child{border-right:none;}
+  .stat .num{font-family:'Oswald',sans-serif;font-size:24px;font-weight:600;color:var(--card);}
+  .stat .lbl{font-family:'IBM Plex Mono',monospace;font-size:9px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);}
+
+  .toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:22px;padding:10px;background:var(--bg-2);border:1px solid #3a3d33;}
+  .toolbar input[type=text]{flex:2;min-width:160px;padding:9px 12px;background:#0f110d;border:1px solid #3a3d33;color:var(--card);font-family:'IBM Plex Mono',monospace;font-size:13px;}
+  .toolbar select{padding:9px 10px;background:#0f110d;border:1px solid #3a3d33;color:var(--card);font-family:'IBM Plex Mono',monospace;font-size:12px;}
+  .btn{font-family:'Oswald',sans-serif;text-transform:uppercase;letter-spacing:0.5px;font-weight:600;padding:9px 14px;border:none;cursor:pointer;font-size:12px;}
+  .btn-red{background:var(--red);color:#fff;}
+  .btn-red:hover{background:#a02f1a;}
+  .btn-outline{background:transparent;border:1px solid var(--card);color:var(--card);}
+  .btn-outline:hover{background:var(--card);color:var(--ink);}
+  .btn-add{margin-left:auto;}
+  .viewToggle{display:flex;border:1px solid var(--card);}
+  .viewToggle button{background:transparent;color:var(--card);border:none;padding:9px 12px;font-family:'IBM Plex Mono',monospace;font-size:11px;text-transform:uppercase;cursor:pointer;}
+  .viewToggle button.active{background:var(--card);color:var(--ink);}
+
+  .empty{border:2px dashed #3a3d33;padding:60px 20px;text-align:center;color:var(--muted);font-family:'IBM Plex Mono',monospace;font-size:13px;}
+
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:22px;}
+  .card{background:var(--card);color:var(--ink);position:relative;box-shadow:6px 6px 0 var(--card-shadow);overflow:hidden;}
+  .card-top{background-image:repeating-linear-gradient(90deg, transparent 0 10px, #c9bf9d 10px 11px);height:10px;border-bottom:2px dashed #b9ae8c;}
+  .card-body{padding:16px 16px 14px;}
+  .itemno{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:1px;}
+  .card-brand{font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-top:4px;}
+  .card-model{font-family:'Oswald',sans-serif;font-weight:600;font-size:20px;line-height:1.15;margin:2px 0 6px;}
+  .card-colorway{font-size:13px;color:#4b463a;font-style:italic;margin-bottom:10px;}
+  .card-img{width:100%;height:140px;object-fit:cover;border:1px solid var(--line);margin-bottom:10px;background:#ddd4b8;}
+  .card-noimg{width:100%;height:60px;display:flex;align-items:center;justify-content:center;border:1px dashed var(--line);margin-bottom:10px;font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted);}
+
+  .tagrow{display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap;}
+  .size-stamp{width:44px;height:44px;border-radius:50%;border:2px solid var(--ink);display:flex;align-items:center;justify-content:center;flex-direction:column;flex-shrink:0;}
+  .size-stamp .n{font-family:'Oswald',sans-serif;font-weight:700;font-size:14px;line-height:1;}
+  .size-stamp .u{font-family:'IBM Plex Mono',monospace;font-size:7px;letter-spacing:0.5px;}
+  .pill{font-family:'IBM Plex Mono',monospace;font-size:10px;text-transform:uppercase;letter-spacing:0.5px;padding:4px 8px;border:1px solid var(--ink);}
+  .pill-condition{background:#e2dbc7;}
+  .pill-cat{background:var(--ink);color:var(--card);}
+
+  .card-figures{display:flex;justify-content:space-between;font-family:'IBM Plex Mono',monospace;font-size:12px;border-top:1px solid var(--line);padding-top:8px;margin-top:4px;}
+  .card-figures div{display:flex;flex-direction:column;}
+  .fig-lbl{font-size:9px;color:var(--muted);text-transform:uppercase;}
+  .fig-val{font-weight:600;}
+  .fig-val.gold{color:var(--gold);}
+  .card-notes{font-size:12px;color:#5c5643;margin-top:8px;line-height:1.4;}
+
+  .qrmini{display:flex;align-items:center;gap:8px;margin-top:10px;}
+  .qrmini > div{background:#fff;padding:3px;}
+
+  .status-stamp{position:absolute;top:38%;left:50%;transform:translate(-50%,-50%) rotate(-14deg);font-family:'Oswald',sans-serif;font-weight:700;font-size:26px;letter-spacing:3px;border:4px solid var(--red);color:var(--red);padding:4px 14px;opacity:0.82;pointer-events:none;text-transform:uppercase;background:rgba(237,231,216,0.55);}
+  .status-stamp.wishlist{border-color:var(--wish);color:var(--wish);}
+
+  .card-actions{display:flex;gap:6px;margin-top:12px;flex-wrap:wrap;}
+  .card-actions button{flex:1;font-family:'IBM Plex Mono',monospace;font-size:10px;text-transform:uppercase;padding:7px 2px;border:1px solid var(--ink);background:transparent;color:var(--ink);cursor:pointer;min-width:60px;}
+  .card-actions button:hover{background:var(--ink);color:var(--card);}
+  .card-actions button.danger:hover{background:var(--red);border-color:var(--red);color:#fff;}
+
+  table.listview{width:100%;border-collapse:collapse;background:var(--card);color:var(--ink);}
+  table.listview th{background:var(--ink);color:var(--card);font-family:'IBM Plex Mono',monospace;font-size:10px;text-transform:uppercase;padding:8px 10px;text-align:left;letter-spacing:0.5px;}
+  table.listview td{padding:8px 10px;border-bottom:1px solid var(--line);font-size:13px;}
+  table.listview tr:hover td{background:#e2dbc7;}
+  table.listview button{font-family:'IBM Plex Mono',monospace;font-size:10px;padding:4px 8px;border:1px solid var(--ink);background:transparent;cursor:pointer;margin-right:4px;}
+
+  .overlay{position:fixed;inset:0;background:rgba(10,10,8,0.75);display:flex;align-items:center;justify-content:center;padding:20px;z-index:50;}
+  .modal{background:var(--card);color:var(--ink);width:100%;max-width:560px;max-height:90vh;overflow-y:auto;box-shadow:8px 8px 0 var(--card-shadow);}
+  .modal-head{background:var(--ink);color:var(--card);padding:14px 20px;font-family:'Oswald',sans-serif;text-transform:uppercase;letter-spacing:1px;font-size:16px;font-weight:600;display:flex;justify-content:space-between;align-items:center;}
+  .modal-head button{background:none;border:none;color:var(--card);font-size:20px;cursor:pointer;line-height:1;}
+  .modal-body{padding:20px;}
+  .field{margin-bottom:14px;}
+  .field label{display:block;font-family:'IBM Plex Mono',monospace;font-size:10px;text-transform:uppercase;letter-spacing:0.5px;color:var(--muted);margin-bottom:5px;}
+  .field input, .field select, .field textarea{width:100%;padding:9px 10px;border:1px solid var(--muted);background:#fff;font-family:'IBM Plex Sans',sans-serif;font-size:14px;color:var(--ink);}
+  .field textarea{resize:vertical;min-height:60px;}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  .modal-foot{display:flex;gap:10px;padding:14px 20px;border-top:1px solid var(--line);flex-wrap:wrap;}
+  .modal-foot button{flex:1;min-width:100px;}
+  .btn-cancel{background:transparent;border:1px solid var(--ink);color:var(--ink);}
+
+  .segToggle{display:flex;border:1px solid var(--muted);}
+  .segToggle button{flex:1;padding:9px;background:#fff;border:none;font-family:'IBM Plex Mono',monospace;font-size:12px;text-transform:uppercase;cursor:pointer;color:var(--ink);}
+  .segToggle button.active{background:var(--ink);color:var(--card);}
+
+  .scanBox{position:relative;background:#000;}
+  .scanBox video{width:100%;display:block;max-height:340px;object-fit:cover;}
+  .scanBox canvas{display:none;}
+  .scan-hint{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted);padding:10px 20px 0;}
+
+  .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--card);color:var(--ink);padding:10px 20px;font-family:'IBM Plex Mono',monospace;font-size:12px;text-transform:uppercase;letter-spacing:0.5px;box-shadow:4px 4px 0 var(--card-shadow);z-index:100;}
+
+  #printArea{display:none;}
+  @media print{
+    @page{ size: 3.5in 1.125in; margin:0; }
+    body *{ visibility:hidden; }
+    #printArea, #printArea *{ visibility:visible; }
+    #printArea{
+      display:flex; position:fixed; top:0; left:0;
+      width:3.5in; height:1.125in; background:#fff; color:#000;
+      padding:0.06in 0.08in; box-sizing:border-box;
+      flex-direction:row; align-items:center; gap:0.1in;
+    }
+    #printArea .qrbox{flex-shrink:0;}
+    #printArea .labeltext{font-family:'IBM Plex Mono', monospace; line-height:1.25; overflow:hidden;}
+    #printArea .labeltext .l1{font-size:9.5pt; font-weight:600;}
+    #printArea .labeltext .l2{font-size:8pt;}
+    #printArea .labeltext .l3{font-size:7pt; color:#333;}
+  }
+</style>
+</head>
+<body>
+<div class="overlay" id="loginOverlay" style="display:flex;">
+  <div class="modal" style="max-width:360px;">
+    <div class="modal-head"><span>Stockroom Sign In</span></div>
+    <form id="loginForm" style="padding:20px;">
+      <div class="field"><label>Email</label><input id="login-email" type="email" required></div>
+      <div class="field"><label>Password</label><input id="login-password" type="password" required></div>
+      <div id="loginError" style="color:var(--red);font-family:'IBM Plex Mono',monospace;font-size:12px;margin-bottom:10px;"></div>
+      <button type="submit" class="btn btn-red" style="width:100%;border:none;">Sign In</button>
+    </form>
+  </div>
+</div>
+
+<div id="appRoot" style="display:none;">
+<div class="wrap">
+  <header>
+    <div>
+      <div class="brandmark">Stock<span>room</span></div>
+      <div class="tagline">Sneaker &amp; Boot Inventory Manifest</div>
+    </div>
+    <div style="text-align:right;">
+      <div class="manifest" id="dateLine"></div>
+      <button id="signOutBtn" class="btn btn-outline" style="margin-top:8px;padding:5px 10px;font-size:10px;">Sign Out</button>
+    </div>
+  </header>
+
+  <div class="stats" id="stats"></div>
+
+  <div class="toolbar">
+    <input type="text" id="search" placeholder="Search brand, model, colorway, item #, notes…">
+    <select id="filterCategory">
+      <option value="">All types</option>
+      <option>Sneaker</option>
+      <option>Boot</option>
+    </select>
+    <select id="filterStatus">
+      <option value="">All statuses</option>
+      <option>In Collection</option>
+      <option>Sold</option>
+      <option>Wishlist</option>
+    </select>
+    <select id="filterCondition">
+      <option value="">All conditions</option>
+      <option>Deadstock (DS)</option>
+      <option>VNDS</option>
+      <option>Worn / Good</option>
+      <option>Worn / Fair</option>
+      <option>Beat</option>
+    </select>
+    <select id="sortBy">
+      <option value="recent">Sort: Recently added</option>
+      <option value="value-desc">Sort: Value (high→low)</option>
+      <option value="value-asc">Sort: Value (low→high)</option>
+      <option value="brand">Sort: Brand A→Z</option>
+    </select>
+    <div class="viewToggle">
+      <button id="viewGridBtn" class="active">Gallery</button>
+      <button id="viewListBtn">List</button>
+    </div>
+    <button class="btn btn-outline" id="openScanFind">Scan to Find</button>
+    <button class="btn btn-outline" id="openScanAdd">Scan Tag to Add</button>
+    <button class="btn btn-red btn-add" id="openAdd">+ Add Pair</button>
+  </div>
+
+  <div id="gridHolder"></div>
+</div>
+
+<div id="printArea">
+  <div class="qrbox" id="printQr"></div>
+  <div class="labeltext">
+    <div class="l1" id="printL1"></div>
+    <div class="l2" id="printL2"></div>
+    <div class="l3" id="printL3"></div>
+  </div>
+</div>
+</div>
+
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyCScLVf0gUldPukznfyzovYr-K-_AP6MUc",
+  authDomain: "stockroom-inventory-c3369.firebaseapp.com",
+  projectId: "stockroom-inventory-c3369",
+  storageBucket: "stockroom-inventory-c3369.firebasestorage.app",
+  messagingSenderId: "255897699258",
+  appId: "1:255897699258:web:df109e0cda3e2c9b151383"
+};
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.firestore();
+
+const STORAGE_KEY = 'sneaker-inventory-v2';
+let inventory = [];
+let counter = 0;
+let editingId = null;
+let currentView = 'grid';
+let quaggaRunning = false;
+let qrScanStream = null;
+let qrScanRaf = null;
+
+function uid(){ return 'p_' + Date.now() + '_' + Math.random().toString(36).slice(2,8); }
+function pad4(n){ return String(n).padStart(4,'0'); }
+
+async function loadData(){
+  try{
+    const snap = await db.collection('stockroom').doc('main').get();
+    if(snap.exists){
+      const parsed = snap.data();
+      inventory = parsed.items || [];
+      counter = parsed.counter || inventory.length;
+    } else {
+      inventory = []; counter = 0;
+    }
+  }catch(e){ inventory = []; counter = 0; showToast('Could not load data — check your connection'); }
+  render();
+}
+
+async function saveData(){
+  try{
+    await db.collection('stockroom').doc('main').set({items:inventory, counter});
+  }catch(e){ showToast('Save failed — check your connection'); }
+}
+
+function showToast(msg){
+  const t = document.createElement('div');
+  t.className='toast'; t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(()=>t.remove(), 2000);
+}
+
+function fmtMoney(n){
+  if(n===null||n===undefined||n===''||isNaN(n)) return '—';
+  return '$' + Number(n).toLocaleString(undefined,{maximumFractionDigits:0});
+}
+
+function renderStats(){
+  const total = inventory.filter(p=>p.status!=='Wishlist').length;
+  const inCollection = inventory.filter(p=>p.status==='In Collection').length;
+  const sold = inventory.filter(p=>p.status==='Sold').length;
+  const wishlist = inventory.filter(p=>p.status==='Wishlist').length;
+  const totalValue = inventory.filter(p=>p.status==='In Collection').reduce((s,p)=>s+(Number(p.estValue)||0),0);
+  const totalInvested = inventory.filter(p=>p.status!=='Wishlist').reduce((s,p)=>s+(Number(p.purchasePrice)||0),0);
+  const stats = [['PAIRS OWNED',total],['IN COLLECTION',inCollection],['SOLD',sold],['WISHLIST',wishlist],['EST. VALUE',fmtMoney(totalValue)],['TOTAL INVESTED',fmtMoney(totalInvested)]];
+  document.getElementById('stats').innerHTML = stats.map(([lbl,num])=>`<div class="stat"><div class="num">${num}</div><div class="lbl">${lbl}</div></div>`).join('');
+}
+
+function getFiltered(){
+  const q = document.getElementById('search').value.trim().toLowerCase();
+  const cat = document.getElementById('filterCategory').value;
+  const st = document.getElementById('filterStatus').value;
+  const cond = document.getElementById('filterCondition').value;
+  const sortBy = document.getElementById('sortBy').value;
+  let list = inventory.filter(p=>{
+    if(cat && p.category!==cat) return false;
+    if(st && p.status!==st) return false;
+    if(cond && p.condition!==cond) return false;
+    if(q){
+      const hay = [p.brand,p.model,p.colorway,p.notes,p.itemNumber,p.barcode].join(' ').toLowerCase();
+      if(!hay.includes(q)) return false;
+    }
+    return true;
+  });
+  if(sortBy==='value-desc') list.sort((a,b)=>(Number(b.estValue)||0)-(Number(a.estValue)||0));
+  else if(sortBy==='value-asc') list.sort((a,b)=>(Number(a.estValue)||0)-(Number(b.estValue)||0));
+  else if(sortBy==='brand') list.sort((a,b)=>(a.brand||'').localeCompare(b.brand||''));
+  else list.sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
+  return list;
+}
+
+function render(){
+  renderStats();
+  const list = getFiltered();
+  const holder = document.getElementById('gridHolder');
+  if(inventory.length===0){
+    holder.innerHTML = `<div class="empty">No pairs logged yet. Hit "+ Add Pair" or "Scan Tag to Add" to start the manifest.</div>`;
+    return;
+  }
+  if(list.length===0){
+    holder.innerHTML = `<div class="empty">Nothing matches that search/filter combo.</div>`;
+    return;
+  }
+  if(currentView==='grid'){
+    holder.innerHTML = `<div class="grid">${list.map(cardHtml).join('')}</div>`;
+    list.forEach(p=>{
+      const el = document.getElementById('qr_'+p.id);
+      if(el){ el.innerHTML=''; try{ new QRCode(el, {text:p.itemNumber, width:56, height:56, correctLevel:QRCode.CorrectLevel.M}); }catch(e){} }
+    });
+  } else {
+    holder.innerHTML = listHtml(list);
+  }
+}
+
+function cardHtml(p){
+  const stampClass = p.status==='Sold' ? 'status-stamp' : (p.status==='Wishlist' ? 'status-stamp wishlist' : '');
+  const stamp = (p.status==='Sold'||p.status==='Wishlist') ? `<div class="${stampClass}">${p.status}</div>` : '';
+  const img = p.imageUrl ? `<img class="card-img" src="${esc(p.imageUrl)}" onerror="this.outerHTML='<div class=\\'card-noimg\\'>Image unavailable</div>'">` : `<div class="card-noimg">No image on file</div>`;
+  return `
+    <div class="card">
+      <div class="card-top"></div>
+      ${stamp}
+      <div class="card-body">
+        <div class="itemno">ITEM #${esc(p.itemNumber)}</div>
+        <div class="card-brand">${esc(p.brand)||'—'}</div>
+        <div class="card-model">${esc(p.model)||'Untitled Pair'}</div>
+        ${p.colorway ? `<div class="card-colorway">"${esc(p.colorway)}"</div>` : ''}
+        ${img}
+        <div class="tagrow">
+          <div class="size-stamp"><div class="n">${esc(p.size)||'—'}</div><div class="u">SIZE</div></div>
+          <span class="pill pill-cat">${esc(p.category)||'Sneaker'}</span>
+          ${p.condition ? `<span class="pill pill-condition">${esc(p.condition)}</span>` : ''}
+        </div>
+        <div class="card-figures">
+          <div><span class="fig-lbl">Paid</span><span class="fig-val">${fmtMoney(p.purchasePrice)}</span></div>
+          <div><span class="fig-lbl">Acquired</span><span class="fig-val">${p.purchaseDate||'—'}</span></div>
+          <div><span class="fig-lbl">Est. Value</span><span class="fig-val gold">${fmtMoney(p.estValue)}</span></div>
+        </div>
+        ${p.notes ? `<div class="card-notes">${esc(p.notes)}</div>` : ''}
+        <div class="qrmini"><div id="qr_${p.id}"></div><span style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);">Label QR</span></div>
+        <div class="card-actions">
+          <button onclick="openEdit('${p.id}')">Edit</button>
+          <button onclick="printLabel('${p.id}')">Print Label</button>
+          <button onclick="checkValue('${p.id}')">Check Value</button>
+          <button class="danger" onclick="removePair('${p.id}')">Remove</button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function listHtml(list){
+  const rows = list.map(p=>`
+    <tr>
+      <td>${esc(p.itemNumber)}</td>
+      <td>${esc(p.brand)}</td>
+      <td>${esc(p.model)}</td>
+      <td>${esc(p.colorway)}</td>
+      <td>${esc(p.category)}</td>
+      <td>${esc(p.size)}</td>
+      <td>${esc(p.condition)}</td>
+      <td>${esc(p.status)}</td>
+      <td>${fmtMoney(p.purchasePrice)}</td>
+      <td>${fmtMoney(p.estValue)}</td>
+      <td>
+        <button onclick="openEdit('${p.id}')">Edit</button>
+        <button onclick="printLabel('${p.id}')">Label</button>
+        <button onclick="removePair('${p.id}')">Remove</button>
+      </td>
+    </tr>`).join('');
+  return `<table class="listview"><thead><tr>
+    <th>Item#</th><th>Brand</th><th>Model</th><th>Colorway</th><th>Type</th><th>Size</th><th>Condition</th><th>Status</th><th>Paid</th><th>Value</th><th>Actions</th>
+  </tr></thead><tbody>${rows}</tbody></table>`;
+}
+
+function esc(s){ if(s===undefined||s===null) return ''; return String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+async function removePair(id){
+  if(!confirm("Remove this pair from the manifest? This can't be undone.")) return;
+  inventory = inventory.filter(p=>p.id!==id);
+  await saveData(); render(); showToast('Pair removed');
+}
+
+function checkValue(id){
+  const p = inventory.find(x=>x.id===id);
+  if(!p) return;
+  const q = encodeURIComponent([p.brand,p.model,p.colorway].filter(Boolean).join(' '));
+  window.open('https://stockx.com/search?s='+q, '_blank');
+}
+
+function openEdit(id){
+  const p = inventory.find(x=>x.id===id);
+  if(!p) return;
+  editingId = id;
+  fillForm(p);
+  document.getElementById('modalTitle').textContent = 'Edit Pair — #'+p.itemNumber;
+  document.getElementById('overlay').style.display='flex';
+}
+
+function openAddModal(prefill){
+  editingId = null;
+  fillForm(prefill || {});
+  document.getElementById('modalTitle').textContent = 'Add Pair';
+  document.getElementById('overlay').style.display='flex';
+}
+
+function fillForm(p){
+  document.getElementById('f-brand').value = p.brand||'';
+  document.getElementById('f-model').value = p.model||'';
+  document.getElementById('f-colorway').value = p.colorway||'';
+  document.getElementById('f-size').value = p.size||'';
+  document.getElementById('f-condition').value = p.condition||'Deadstock (DS)';
+  document.getElementById('f-status').value = p.status||'In Collection';
+  document.getElementById('f-purchasePrice').value = p.purchasePrice||'';
+  document.getElementById('f-purchaseDate').value = p.purchaseDate||new Date().toISOString().slice(0,10);
+  document.getElementById('f-estValue').value = p.estValue||'';
+  document.getElementById('f-imageUrl').value = p.imageUrl||'';
+  document.getElementById('f-notes').value = p.notes||'';
+  document.getElementById('f-barcode').value = p.barcode||'';
+  document.getElementById('f-stylecode').value = p.styleCode||'';
+  setCategory(p.category||'Sneaker');
+}
+
+function setCategory(cat){
+  document.getElementById('f-category').value = cat;
+  document.getElementById('segSneaker').classList.toggle('active', cat==='Sneaker');
+  document.getElementById('segBoot').classList.toggle('active', cat==='Boot');
+}
+
+function closeModal(){ document.getElementById('overlay').style.display='none'; }
+
+async function saveForm(e){
+  e.preventDefault();
+  const data = {
+    brand: document.getElementById('f-brand').value.trim(),
+    model: document.getElementById('f-model').value.trim(),
+    colorway: document.getElementById('f-colorway').value.trim(),
+    size: document.getElementById('f-size').value.trim(),
+    category: document.getElementById('f-category').value,
+    condition: document.getElementById('f-condition').value,
+    status: document.getElementById('f-status').value,
+    purchasePrice: document.getElementById('f-purchasePrice').value,
+    purchaseDate: document.getElementById('f-purchaseDate').value,
+    estValue: document.getElementById('f-estValue').value,
+    imageUrl: document.getElementById('f-imageUrl').value.trim(),
+    notes: document.getElementById('f-notes').value.trim(),
+    barcode: document.getElementById('f-barcode').value.trim(),
+    styleCode: document.getElementById('f-stylecode').value.trim(),
+  };
+  if(!data.brand && !data.model){ showToast('Add at least a brand or model'); return; }
+
+  if(editingId){
+    const idx = inventory.findIndex(p=>p.id===editingId);
+    if(idx>-1) inventory[idx] = {...inventory[idx], ...data};
+  } else {
+    counter += 1;
+    data.id = uid();
+    data.itemNumber = 'STK-'+pad4(counter);
+    data.createdAt = Date.now();
+    inventory.push(data);
+  }
+  await saveData();
+  closeModal(); render();
+  showToast(editingId ? 'Pair updated' : 'Pair added to manifest');
+}
+
+function printLabel(id){
+  const p = inventory.find(x=>x.id===id);
+  if(!p) return;
+  const l1 = [p.brand, p.model, p.colorway].filter(Boolean).join(' — ');
+  const l2 = 'Size ' + (p.size||'—') + '   |   Added ' + (p.purchaseDate||'—');
+  const l3 = 'Item #' + p.itemNumber;
+  document.getElementById('printL1').textContent = l1 || 'Untitled Pair';
+  document.getElementById('printL2').textContent = l2;
+  document.getElementById('printL3').textContent = l3;
+  const qrEl = document.getElementById('printQr');
+  qrEl.innerHTML = '';
+  new QRCode(qrEl, {text:p.itemNumber, width:72, height:72, correctLevel:QRCode.CorrectLevel.M});
+  setTimeout(()=>window.print(), 150);
+}
+
+function lookupStyleCode(){
+  const code = document.getElementById('f-stylecode').value.trim();
+  if(!code){ showToast('Type a Nike style code first'); return; }
+  window.open('https://www.google.com/search?q='+encodeURIComponent('Nike '+code+' style code'), '_blank');
+}
+
+async function lookupBarcode(){
+  const code = document.getElementById('f-barcode').value.trim();
+  if(!code){ showToast('Type a barcode number first'); return; }
+  showToast('Looking up '+code+'…');
+  const result = await fetchUpc(code);
+  if(result && result.brand){
+    document.getElementById('f-brand').value = result.brand;
+    document.getElementById('f-model').value = result.model;
+    showToast('Prefilled — please verify before saving');
+  } else {
+    showToast('No match found — fill in the rest manually');
+  }
+}
+
+async function fetchUpc(code){
+  try{
+    const resp = await fetch('https://api.upcitemdb.com/prod/trial/lookup?upc='+encodeURIComponent(code));
+    if(resp.ok){
+      const j = await resp.json();
+      const item = j && j.items && j.items[0];
+      if(item && item.title){
+        const brand = item.brand || '';
+        const model = brand ? item.title.replace(brand,'').trim() : item.title;
+        return {brand, model};
+      }
+    }
+  }catch(e){ /* lookup blocked or failed */ }
+  return null;
+}
+
+async function openScanFind(){
+  document.getElementById('scanFindOverlay').style.display='flex';
+  const video = document.getElementById('scanFindVideo');
+  try{
+    qrScanStream = await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}});
+    video.srcObject = qrScanStream;
+    await video.play();
+    scanFindLoop();
+  }catch(e){
+    showToast('Camera unavailable — check browser/app camera permission in device settings');
+    closeScanFind();
+  }
+}
+function scanFindLoop(){
+  const video = document.getElementById('scanFindVideo');
+  const canvas = document.getElementById('scanFindCanvas');
+  if(video.readyState===video.HAVE_ENOUGH_DATA){
+    canvas.width = video.videoWidth; canvas.height = video.videoHeight;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(video,0,0,canvas.width,canvas.height);
+    const imgData = ctx.getImageData(0,0,canvas.width,canvas.height);
+    const code = jsQR(imgData.data, imgData.width, imgData.height);
+    if(code && code.data){
+      const match = inventory.find(p=>p.itemNumber===code.data || p.id===code.data);
+      if(match){
+        closeScanFind();
+        openEdit(match.id);
+        showToast('Found #'+match.itemNumber);
+        return;
+      }
+    }
+  }
+  qrScanRaf = requestAnimationFrame(scanFindLoop);
+}
+function closeScanFind(){
+  document.getElementById('scanFindOverlay').style.display='none';
+  if(qrScanRaf) cancelAnimationFrame(qrScanRaf);
+  if(qrScanStream){ qrScanStream.getTracks().forEach(t=>t.stop()); qrScanStream=null; }
+}
+
+function openScanAdd(){
+  document.getElementById('scanAddOverlay').style.display='flex';
+  const target = document.getElementById('scanAddTarget');
+  target.innerHTML = '';
+  quaggaRunning = true;
+  Quagga.init({
+    inputStream:{ type:'LiveStream', target, constraints:{ facingMode:'environment' } },
+    decoder:{ readers:['upc_reader','ean_reader','ean_8_reader'] }
+  }, function(err){
+    if(err){ showToast('Camera/barcode reader unavailable — check camera permission in device settings'); closeScanAdd(); return; }
+    Quagga.start();
+  });
+  Quagga.onDetected(onBarcodeDetected);
+}
+async function onBarcodeDetected(result){
+  if(!quaggaRunning) return;
+  const code = result && result.codeResult && result.codeResult.code;
+  if(!code) return;
+  quaggaRunning = false;
+  closeScanAdd();
+  showToast('Barcode read: '+code+' — looking it up…');
+  const looked = await fetchUpc(code);
+  const prefill = { barcode: code };
+  if(looked){ prefill.brand = looked.brand; prefill.model = looked.model; }
+  openAddModal(prefill);
+  showToast(prefill.brand ? 'Prefilled — please verify before saving' : "Couldn't auto-identify — barcode saved, fill in the rest");
+}
+function closeScanAdd(){
+  document.getElementById('scanAddOverlay').style.display='none';
+  quaggaRunning = false;
+  try{ Quagga.stop(); }catch(e){}
+}
+
+document.addEventListener('DOMContentLoaded', function(){
+  document.getElementById('openAdd').addEventListener('click', ()=>openAddModal());
+  document.getElementById('openScanFind').addEventListener('click', openScanFind);
+  document.getElementById('openScanAdd').addEventListener('click', openScanAdd);
+  document.getElementById('search').addEventListener('input', render);
+  document.getElementById('filterCategory').addEventListener('change', render);
+  document.getElementById('filterStatus').addEventListener('change', render);
+  document.getElementById('filterCondition').addEventListener('change', render);
+  document.getElementById('sortBy').addEventListener('change', render);
+  document.getElementById('viewGridBtn').addEventListener('click', ()=>{ currentView='grid'; document.getElementById('viewGridBtn').classList.add('active'); document.getElementById('viewListBtn').classList.remove('active'); render(); });
+  document.getElementById('viewListBtn').addEventListener('click', ()=>{ currentView='list'; document.getElementById('viewListBtn').classList.add('active'); document.getElementById('viewGridBtn').classList.remove('active'); render(); });
+  document.getElementById('segSneaker').addEventListener('click', ()=>setCategory('Sneaker'));
+  document.getElementById('segBoot').addEventListener('click', ()=>setCategory('Boot'));
+
+  document.getElementById('loginForm').addEventListener('submit', function(e){
+    e.preventDefault();
+    const email = document.getElementById('login-email').value.trim();
+    const pass = document.getElementById('login-password').value;
+    document.getElementById('loginError').textContent = '';
+    auth.signInWithEmailAndPassword(email, pass).catch(err=>{
+      document.getElementById('loginError').textContent = 'Sign-in failed — check email/password.';
+    });
+  });
+
+  document.getElementById('signOutBtn').addEventListener('click', ()=>auth.signOut());
+
+  auth.onAuthStateChanged(function(user){
+    if(user){
+      document.getElementById('loginOverlay').style.display = 'none';
+      document.getElementById('appRoot').style.display = 'block';
+      const dateLine = document.getElementById('dateLine');
+      dateLine.textContent = 'MANIFEST DATE: ' + new Date().toLocaleDateString(undefined,{year:'numeric',month:'short',day:'2-digit'}).toUpperCase();
+      loadData();
+    } else {
+      document.getElementById('loginOverlay').style.display = 'flex';
+      document.getElementById('appRoot').style.display = 'none';
+    }
+  });
+});
+</script>
+
+<div class="overlay" id="overlay" style="display:none;">
+  <div class="modal">
+    <div class="modal-head"><span id="modalTitle">Add Pair</span><button onclick="closeModal()">&times;</button></div>
+    <form id="pairForm" onsubmit="saveForm(event)">
+      <div class="modal-body">
+        <div class="field">
+          <label>Type</label>
+          <div class="segToggle">
+            <button type="button" id="segSneaker" class="active">Sneaker</button>
+            <button type="button" id="segBoot">Boot</button>
+          </div>
+          <input type="hidden" id="f-category" value="Sneaker">
+        </div>
+        <div class="row2">
+          <div class="field"><label>Brand</label><input id="f-brand" type="text" placeholder="Nike, New Balance, Red Wing…"></div>
+          <div class="field"><label>Model / Name</label><input id="f-model" type="text" placeholder="Air Max 1, 990v6, Iron Ranger…"></div>
+        </div>
+        <div class="field"><label>Colorway</label><input id="f-colorway" type="text" placeholder="Anthracite / Wheat"></div>
+        <div class="row2">
+          <div class="field"><label>Size</label><input id="f-size" type="text" placeholder="10.5"></div>
+          <div class="field"><label>Barcode / SKU</label>
+            <div style="display:flex;gap:6px;">
+              <input id="f-barcode" type="text" placeholder="Type the UPC from the box" style="flex:1;">
+              <button type="button" onclick="lookupBarcode()" style="font-family:'IBM Plex Mono',monospace;font-size:11px;text-transform:uppercase;padding:0 12px;border:1px solid var(--ink);background:transparent;cursor:pointer;white-space:nowrap;">Look Up</button>
+            </div>
+          </div>
+          <div class="field"><label>Nike Style Code (e.g. CW2288-111)</label>
+            <div style="display:flex;gap:6px;">
+              <input id="f-stylecode" type="text" placeholder="Only relevant for Nike/Jordan pairs" style="flex:1;">
+              <button type="button" onclick="lookupStyleCode()" style="font-family:'IBM Plex Mono',monospace;font-size:11px;text-transform:uppercase;padding:0 12px;border:1px solid var(--ink);background:transparent;cursor:pointer;white-space:nowrap;">Look Up</button>
+            </div>
+          </div>
+        </div>
+        <div class="row2">
+          <div class="field"><label>Condition</label><select id="f-condition">
+            <option>Deadstock (DS)</option><option>VNDS</option><option>Worn / Good</option><option>Worn / Fair</option><option>Beat</option>
+          </select></div>
+          <div class="field"><label>Status</label><select id="f-status">
+            <option>In Collection</option><option>Sold</option><option>Wishlist</option>
+          </select></div>
+        </div>
+        <div class="row2">
+          <div class="field"><label>Purchase Price ($)</label><input id="f-purchasePrice" type="number" step="0.01" placeholder="180"></div>
+          <div class="field"><label>Purchase Date</label><input id="f-purchaseDate" type="date"></div>
+        </div>
+        <div class="field"><label>Est. Current Value ($)</label><input id="f-estValue" type="number" step="0.01" placeholder="220"></div>
+        <div class="field"><label>Image URL (optional)</label><input id="f-imageUrl" type="text" placeholder="Link to a hosted photo"></div>
+        <div class="field"><label>Notes</label><textarea id="f-notes" placeholder="Box condition, provenance, where you got it…"></textarea></div>
+      </div>
+      <div class="modal-foot">
+        <button type="button" class="btn-cancel" onclick="closeModal()">Cancel</button>
+        <button type="submit" class="btn-red" style="border:none;color:#fff;">Save Pair</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="overlay" id="scanFindOverlay" style="display:none;">
+  <div class="modal" style="max-width:420px;">
+    <div class="modal-head"><span>Scan Label to Find</span><button onclick="closeScanFind()">&times;</button></div>
+    <div class="scan-hint">Point your camera at a printed label's QR code.</div>
+    <div class="scanBox"><video id="scanFindVideo" playsinline muted></video><canvas id="scanFindCanvas"></canvas></div>
+  </div>
+</div>
+
+<div class="overlay" id="scanAddOverlay" style="display:none;">
+  <div class="modal" style="max-width:420px;">
+    <div class="modal-head"><span>Scan Shoebox Barcode</span><button onclick="closeScanAdd()">&times;</button></div>
+    <div class="scan-hint">Point your camera at the UPC barcode on the box/tag. Lookup is best-effort — you'll confirm details before saving.</div>
+    <div class="scanBox" id="scanAddTarget" style="min-height:260px;"></div>
+  </div>
+</div>
+
+</body>
+</html>
