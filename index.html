@@ -178,6 +178,7 @@
       <option>In Collection</option>
       <option>Sold</option>
       <option>Wishlist</option>
+      <option>No Longer in Collection</option>
     </select>
     <select id="filterCondition">
       <option value="">All conditions</option>
@@ -278,8 +279,10 @@ function renderStats(){
   const sold = inventory.filter(p=>p.status==='Sold').length;
   const wishlist = inventory.filter(p=>p.status==='Wishlist').length;
   const totalValue = inventory.filter(p=>p.status==='In Collection').reduce((s,p)=>s+(Number(p.estValue)||0),0);
-  const totalInvested = inventory.filter(p=>p.status!=='Wishlist').reduce((s,p)=>s+(Number(p.purchasePrice)||0),0);
-  const stats = [['PAIRS OWNED',total],['IN COLLECTION',inCollection],['SOLD',sold],['WISHLIST',wishlist],['EST. VALUE',fmtMoney(totalValue)],['TOTAL INVESTED',fmtMoney(totalInvested)]];
+  const noLonger = inventory.filter(p=>p.status==='No Longer in Collection').length;
+  const totalInvested = inventory.filter(p=>p.status!=='Wishlist').reduce((s,p)=>s+(Number(p.purchasePrice)||0)+(Number(p.shippingCost)||0),0);
+  const totalShipping = inventory.filter(p=>p.status!=='Wishlist').reduce((s,p)=>s+(Number(p.shippingCost)||0),0);
+  const stats = [['PAIRS OWNED',total],['IN COLLECTION',inCollection],['SOLD',sold],['WISHLIST',wishlist],['NO LONGER OWNED',noLonger],['EST. VALUE',fmtMoney(totalValue)],['TOTAL INVESTED',fmtMoney(totalInvested)],['TOTAL SHIPPING',fmtMoney(totalShipping)]];
   document.getElementById('stats').innerHTML = stats.map(([lbl,num])=>`<div class="stat"><div class="num">${num}</div><div class="lbl">${lbl}</div></div>`).join('');
 }
 
@@ -330,8 +333,8 @@ function render(){
 }
 
 function cardHtml(p){
-  const stampClass = p.status==='Sold' ? 'status-stamp' : (p.status==='Wishlist' ? 'status-stamp wishlist' : '');
-  const stamp = (p.status==='Sold'||p.status==='Wishlist') ? `<div class="${stampClass}">${p.status}</div>` : '';
+  const stampClass = p.status==='Sold' ? 'status-stamp' : ((p.status==='Wishlist'||p.status==='No Longer in Collection') ? 'status-stamp wishlist' : '');
+  const stamp = (p.status==='Sold'||p.status==='Wishlist'||p.status==='No Longer in Collection') ? `<div class="${stampClass}">${esc(p.status)}</div>` : '';
   const img = p.imageUrl ? `<img class="card-img" src="${esc(p.imageUrl)}" onerror="this.outerHTML='<div class=\\'card-noimg\\'>Image unavailable</div>'">` : `<div class="card-noimg">No image on file</div>`;
   return `
     <div class="card">
@@ -352,6 +355,10 @@ function cardHtml(p){
           <div><span class="fig-lbl">Paid</span><span class="fig-val">${fmtMoney(p.purchasePrice)}</span></div>
           <div><span class="fig-lbl">Acquired</span><span class="fig-val">${p.purchaseDate||'—'}</span></div>
           <div><span class="fig-lbl">Est. Value</span><span class="fig-val gold">${fmtMoney(p.estValue)}</span></div>
+        </div>
+        <div class="card-figures">
+          <div><span class="fig-lbl">Shipping</span><span class="fig-val">${fmtMoney(p.shippingCost)}</span></div>
+          <div><span class="fig-lbl">From</span><span class="fig-val">${esc(p.purchaseLocation)||'—'}</span></div>
         </div>
         ${p.notes ? `<div class="card-notes">${esc(p.notes)}</div>` : ''}
         <div class="qrmini"><div id="qr_${p.id}"></div><span style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);">Label QR</span></div>
@@ -378,6 +385,8 @@ function listHtml(list){
       <td>${esc(p.condition)}</td>
       <td>${esc(p.status)}</td>
       <td>${fmtMoney(p.purchasePrice)}</td>
+      <td>${fmtMoney(p.shippingCost)}</td>
+      <td>${esc(p.purchaseLocation)}</td>
       <td>${fmtMoney(p.estValue)}</td>
       <td>
         <button onclick="openEdit('${p.id}')">Edit</button>
@@ -386,7 +395,7 @@ function listHtml(list){
       </td>
     </tr>`).join('');
   return `<table class="listview"><thead><tr>
-    <th>Item#</th><th>Brand</th><th>Model</th><th>Colorway</th><th>Type</th><th>Size</th><th>Condition</th><th>Status</th><th>Paid</th><th>Value</th><th>Actions</th>
+    <th>Item#</th><th>Brand</th><th>Model</th><th>Colorway</th><th>Type</th><th>Size</th><th>Condition</th><th>Status</th><th>Paid</th><th>Shipping</th><th>Location</th><th>Value</th><th>Actions</th>
   </tr></thead><tbody>${rows}</tbody></table>`;
 }
 
@@ -430,6 +439,8 @@ function fillForm(p){
   document.getElementById('f-status').value = p.status||'In Collection';
   document.getElementById('f-purchasePrice').value = p.purchasePrice||'';
   document.getElementById('f-purchaseDate').value = p.purchaseDate||new Date().toISOString().slice(0,10);
+  document.getElementById('f-shippingCost').value = p.shippingCost||'';
+  document.getElementById('f-purchaseLocation').value = p.purchaseLocation||'';
   document.getElementById('f-estValue').value = p.estValue||'';
   document.getElementById('f-imageUrl').value = p.imageUrl||'';
   document.getElementById('f-notes').value = p.notes||'';
@@ -458,6 +469,8 @@ async function saveForm(e){
     status: document.getElementById('f-status').value,
     purchasePrice: document.getElementById('f-purchasePrice').value,
     purchaseDate: document.getElementById('f-purchaseDate').value,
+    shippingCost: document.getElementById('f-shippingCost').value,
+    purchaseLocation: document.getElementById('f-purchaseLocation').value.trim(),
     estValue: document.getElementById('f-estValue').value,
     imageUrl: document.getElementById('f-imageUrl').value.trim(),
     notes: document.getElementById('f-notes').value.trim(),
@@ -684,12 +697,16 @@ document.addEventListener('DOMContentLoaded', function(){
             <option>Deadstock (DS)</option><option>VNDS</option><option>Worn / Good</option><option>Worn / Fair</option><option>Beat</option>
           </select></div>
           <div class="field"><label>Status</label><select id="f-status">
-            <option>In Collection</option><option>Sold</option><option>Wishlist</option>
+            <option>In Collection</option><option>Sold</option><option>Wishlist</option><option>No Longer in Collection</option>
           </select></div>
         </div>
         <div class="row2">
           <div class="field"><label>Purchase Price ($)</label><input id="f-purchasePrice" type="number" step="0.01" placeholder="180"></div>
           <div class="field"><label>Purchase Date</label><input id="f-purchaseDate" type="date"></div>
+        </div>
+        <div class="row2">
+          <div class="field"><label>Shipping Cost ($)</label><input id="f-shippingCost" type="number" step="0.01" placeholder="12.99"></div>
+          <div class="field"><label>Purchase Location</label><input id="f-purchaseLocation" type="text" placeholder="StockX, GOAT, local shop, in-store…"></div>
         </div>
         <div class="field"><label>Est. Current Value ($)</label><input id="f-estValue" type="number" step="0.01" placeholder="220"></div>
         <div class="field"><label>Image URL (optional)</label><input id="f-imageUrl" type="text" placeholder="Link to a hosted photo"></div>
