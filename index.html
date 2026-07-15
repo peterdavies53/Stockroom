@@ -176,6 +176,7 @@
     <select id="filterStatus">
       <option value="">All statuses</option>
       <option>In Collection</option>
+      <option>In Storage</option>
       <option>Sold</option>
       <option>Wishlist</option>
       <option>No Longer in Collection</option>
@@ -275,10 +276,10 @@ function fmtMoney(n){
 
 function renderStats(){
   const total = inventory.filter(p=>p.status!=='Wishlist').length;
-  const inCollection = inventory.filter(p=>p.status==='In Collection').length;
+  const inCollection = inventory.filter(p=>p.status==='In Collection'||p.status==='In Storage').length;
   const sold = inventory.filter(p=>p.status==='Sold').length;
   const wishlist = inventory.filter(p=>p.status==='Wishlist').length;
-  const totalValue = inventory.filter(p=>p.status==='In Collection').reduce((s,p)=>s+(Number(p.estValue)||0),0);
+  const totalValue = inventory.filter(p=>p.status==='In Collection'||p.status==='In Storage').reduce((s,p)=>s+(Number(p.estValue)||0),0);
   const noLonger = inventory.filter(p=>p.status==='No Longer in Collection').length;
   const totalInvested = inventory.filter(p=>p.status!=='Wishlist').reduce((s,p)=>s+(Number(p.purchasePrice)||0)+(Number(p.shippingCost)||0),0);
   const totalShipping = inventory.filter(p=>p.status!=='Wishlist').reduce((s,p)=>s+(Number(p.shippingCost)||0),0);
@@ -697,7 +698,7 @@ document.addEventListener('DOMContentLoaded', function(){
             <option>Deadstock (DS)</option><option>VNDS</option><option>Worn / Good</option><option>Worn / Fair</option><option>Beat</option>
           </select></div>
           <div class="field"><label>Status</label><select id="f-status">
-            <option>In Collection</option><option>Sold</option><option>Wishlist</option><option>No Longer in Collection</option>
+            <option>In Collection</option><option>In Storage</option><option>Sold</option><option>Wishlist</option><option>No Longer in Collection</option>
           </select></div>
         </div>
         <div class="row2">
