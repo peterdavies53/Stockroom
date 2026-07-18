@@ -122,10 +122,9 @@
   #printArea{display:none;}
   @media print{
     @page{ size: 3.5in 1.125in; margin:0; }
-    body *{ visibility:hidden; }
-    #printArea, #printArea *{ visibility:visible; }
+    .wrap, .overlay{ display:none !important; }
     #printArea{
-      display:flex; position:fixed; top:0; left:0;
+      display:flex !important; position:static;
       width:3.5in; height:1.125in; background:#fff; color:#000;
       padding:0.06in 0.08in; box-sizing:border-box;
       flex-direction:row; align-items:center; gap:0.1in;
