@@ -159,7 +159,7 @@
     </div>
     <div style="text-align:right;">
       <div class="manifest" id="dateLine"></div>
-      <button id="signOutBtn" class="btn btn-outline" style="margin-top:8px;padding:5px 10px;font-size:10px;">Sign Out</button>
+      <span id="roleBadge" style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);margin-right:8px;"></span><button id="signOutBtn" class="btn btn-outline" style="margin-top:8px;padding:5px 10px;font-size:10px;">Sign Out</button>
     </div>
   </header>
 
@@ -234,6 +234,7 @@ let inventory = [];
 let counter = 0;
 let editingId = null;
 let currentView = 'grid';
+let currentRole = 'viewer';
 let quaggaRunning = false;
 let qrScanStream = null;
 let qrScanRaf = null;
@@ -363,10 +364,10 @@ function cardHtml(p){
         ${p.notes ? `<div class="card-notes">${esc(p.notes)}</div>` : ''}
         <div class="qrmini"><div id="qr_${p.id}"></div><span style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);">Label QR</span></div>
         <div class="card-actions">
-          <button onclick="openEdit('${p.id}')">Edit</button>
+          ${currentRole==='admin' ? `<button onclick="openEdit('${p.id}')">Edit</button>` : ''}
           <button onclick="printLabel('${p.id}')">Print Label</button>
           <button onclick="checkValue('${p.id}')">Check Value</button>
-          <button class="danger" onclick="removePair('${p.id}')">Remove</button>
+          ${currentRole==='admin' ? `<button class="danger" onclick="removePair('${p.id}')">Remove</button>` : ''}
         </div>
       </div>
     </div>
@@ -389,9 +390,9 @@ function listHtml(list){
       <td>${esc(p.purchaseLocation)}</td>
       <td>${fmtMoney(p.estValue)}</td>
       <td>
-        <button onclick="openEdit('${p.id}')">Edit</button>
+        ${currentRole==='admin' ? `<button onclick="openEdit('${p.id}')">Edit</button>` : ''}
         <button onclick="printLabel('${p.id}')">Label</button>
-        <button onclick="removePair('${p.id}')">Remove</button>
+        ${currentRole==='admin' ? `<button onclick="removePair('${p.id}')">Remove</button>` : ''}
       </td>
     </tr>`).join('');
   return `<table class="listview"><thead><tr>
@@ -401,7 +402,16 @@ function listHtml(list){
 
 function esc(s){ if(s===undefined||s===null) return ''; return String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 
+function applyRolePermissions(){
+  const isAdmin = currentRole === 'admin';
+  document.getElementById('openAdd').style.display = isAdmin ? '' : 'none';
+  document.getElementById('openScanAdd').style.display = isAdmin ? '' : 'none';
+  const badge = document.getElementById('roleBadge');
+  if(badge) badge.textContent = isAdmin ? 'ADMIN' : 'VIEW ONLY';
+}
+
 async function removePair(id){
+  if(currentRole !== 'admin'){ showToast('View-only account — no changes allowed'); return; }
   if(!confirm("Remove this pair from the manifest? This can't be undone.")) return;
   inventory = inventory.filter(p=>p.id!==id);
   await saveData(); render(); showToast('Pair removed');
@@ -459,6 +469,7 @@ function closeModal(){ document.getElementById('overlay').style.display='none'; 
 
 async function saveForm(e){
   e.preventDefault();
+  if(currentRole !== 'admin'){ showToast('View-only account — no changes allowed'); return; }
   const data = {
     brand: document.getElementById('f-brand').value.trim(),
     model: document.getElementById('f-model').value.trim(),
@@ -644,12 +655,17 @@ document.addEventListener('DOMContentLoaded', function(){
 
   document.getElementById('signOutBtn').addEventListener('click', ()=>auth.signOut());
 
-  auth.onAuthStateChanged(function(user){
+  auth.onAuthStateChanged(async function(user){
     if(user){
       document.getElementById('loginOverlay').style.display = 'none';
       document.getElementById('appRoot').style.display = 'block';
       const dateLine = document.getElementById('dateLine');
       dateLine.textContent = 'MANIFEST DATE: ' + new Date().toLocaleDateString(undefined,{year:'numeric',month:'short',day:'2-digit'}).toUpperCase();
+      try{
+        const roleSnap = await db.collection('roles').doc(user.uid).get();
+        currentRole = (roleSnap.exists && roleSnap.data().role === 'admin') ? 'admin' : 'viewer';
+      }catch(e){ currentRole = 'viewer'; }
+      applyRolePermissions();
       loadData();
     } else {
       document.getElementById('loginOverlay').style.display = 'flex';
