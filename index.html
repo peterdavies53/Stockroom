@@ -336,7 +336,7 @@ function render(){
 function cardHtml(p){
   const stampClass = p.status==='Sold' ? 'status-stamp' : ((p.status==='Wishlist'||p.status==='No Longer in Collection') ? 'status-stamp wishlist' : '');
   const stamp = (p.status==='Sold'||p.status==='Wishlist'||p.status==='No Longer in Collection') ? `<div class="${stampClass}">${esc(p.status)}</div>` : '';
-  const img = p.imageUrl ? `<img class="card-img" src="${esc(p.imageUrl)}" onerror="this.outerHTML='<div class=\\'card-noimg\\'>Image unavailable</div>'">` : `<div class="card-noimg">No image on file</div>`;
+  const img = p.imageUrl ? `<img class="card-img" src="${esc(normalizeImageUrl(p.imageUrl))}" onerror="this.outerHTML='<div class=\\'card-noimg\\'>Image unavailable</div>'">` : `<div class="card-noimg">No image on file</div>`;
   return `
     <div class="card">
       <div class="card-top"></div>
@@ -398,6 +398,20 @@ function listHtml(list){
   return `<table class="listview"><thead><tr>
     <th>Item#</th><th>Brand</th><th>Model</th><th>Colorway</th><th>Type</th><th>Size</th><th>Condition</th><th>Status</th><th>Paid</th><th>Shipping</th><th>Location</th><th>Value</th><th>Actions</th>
   </tr></thead><tbody>${rows}</tbody></table>`;
+}
+
+function normalizeImageUrl(u){
+  if(!u) return '';
+  const trimmed = String(u).trim();
+  try{
+    const url = new URL(trimmed);
+    if(/(^|\.)dropbox\.com$/i.test(url.hostname)){
+      url.searchParams.delete('dl');
+      url.searchParams.set('raw','1');
+      return url.toString();
+    }
+  }catch(e){}
+  return trimmed;
 }
 
 function esc(s){ if(s===undefined||s===null) return ''; return String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
@@ -483,7 +497,7 @@ async function saveForm(e){
     shippingCost: document.getElementById('f-shippingCost').value,
     purchaseLocation: document.getElementById('f-purchaseLocation').value.trim(),
     estValue: document.getElementById('f-estValue').value,
-    imageUrl: document.getElementById('f-imageUrl').value.trim(),
+    imageUrl: normalizeImageUrl(document.getElementById('f-imageUrl').value),
     notes: document.getElementById('f-notes').value.trim(),
     barcode: document.getElementById('f-barcode').value.trim(),
     styleCode: document.getElementById('f-stylecode').value.trim(),
@@ -725,7 +739,7 @@ document.addEventListener('DOMContentLoaded', function(){
           <div class="field"><label>Purchase Location</label><input id="f-purchaseLocation" type="text" placeholder="StockX, GOAT, local shop, in-store…"></div>
         </div>
         <div class="field"><label>Est. Current Value ($)</label><input id="f-estValue" type="number" step="0.01" placeholder="220"></div>
-        <div class="field"><label>Image URL (optional)</label><input id="f-imageUrl" type="text" placeholder="Link to a hosted photo"></div>
+        <div class="field"><label>Image URL (optional)</label><input id="f-imageUrl" type="text" placeholder="Paste a Dropbox share link (or any image URL)"></div>
         <div class="field"><label>Notes</label><textarea id="f-notes" placeholder="Box condition, provenance, where you got it…"></textarea></div>
       </div>
       <div class="modal-foot">
