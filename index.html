@@ -59,7 +59,7 @@
   .card-brand{font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-top:4px;}
   .card-model{font-family:'Oswald',sans-serif;font-weight:600;font-size:20px;line-height:1.15;margin:2px 0 6px;}
   .card-colorway{font-size:13px;color:#4b463a;font-style:italic;margin-bottom:10px;}
-  .card-img{width:100%;height:140px;object-fit:cover;border:1px solid var(--line);margin-bottom:10px;background:#ddd4b8;}
+  .card-img{width:100%;height:160px;object-fit:contain;border:1px solid var(--line);margin-bottom:10px;background:#f6f2e6;}
   .card-noimg{width:100%;height:60px;display:flex;align-items:center;justify-content:center;border:1px dashed var(--line);margin-bottom:10px;font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted);}
 
   .tagrow{display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap;}
@@ -336,7 +336,7 @@ function render(){
 function cardHtml(p){
   const stampClass = p.status==='Sold' ? 'status-stamp' : ((p.status==='Wishlist'||p.status==='No Longer in Collection') ? 'status-stamp wishlist' : '');
   const stamp = (p.status==='Sold'||p.status==='Wishlist'||p.status==='No Longer in Collection') ? `<div class="${stampClass}">${esc(p.status)}</div>` : '';
-  const img = p.imageUrl ? `<img class="card-img" src="${esc(normalizeImageUrl(p.imageUrl))}" onerror="this.outerHTML='<div class=\\'card-noimg\\'>Image unavailable</div>'">` : `<div class="card-noimg">No image on file</div>`;
+  const img = p.imageUrl ? `<img class="card-img" loading="lazy" src="${esc(normalizeImageUrl(p.imageUrl))}" onerror="this.outerHTML='<div class=\\'card-noimg\\'>Image unavailable</div>'">` : `<div class="card-noimg">No image on file</div>`;
   return `
     <div class="card">
       <div class="card-top"></div>
